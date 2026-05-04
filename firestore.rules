@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Config (sections + users) — readable by anyone, writable by anyone
+    // (since the app has its own admin password logic)
+    match /config/{doc} {
+      allow read, write: if true;
+    }
+
+    // Submissions — anyone can read/write
+    match /submissions/{subId} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>مأتم السنابس — منصة الاستبيانات</title>
+<title>مأتم السنابس — منصة التقارير</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -43,7 +43,7 @@
       <div class="login-head">
         <a href="https://raw.githubusercontent.com/malsanabis/Matam-Forms/refs/heads/main/logo.png" target="_blank"><img src="https://raw.githubusercontent.com/malsanabis/Matam-Forms/refs/heads/main/logo.png" alt="مأتم السنابس" style="height:68px;width:68px;object-fit:contain;margin:0 auto 1rem;display:block;"></a>
         <h1>مأتم السنابس</h1>
-        <p>منصة الاستبيانات الداخلية</p>
+        <p>منصة التقارير الداخلية</p>
       </div>
       <div class="login-body">
         <div class="igroup">
@@ -118,7 +118,7 @@
       <h2 class="page-title" id="mgr-title">لوحة مسؤول القسم</h2>
       <!-- TABS -->
       <div style="display:flex;gap:.5rem;margin-bottom:1.3rem;border-bottom:2px solid var(--border);padding-bottom:.7rem;flex-wrap:wrap">
-        <button class="mgr-tab active" id="tab-review" onclick="switchMgrTab('review')">📋 مراجعة الاستبيانات <span id="tab-review-count" style="background:var(--orange);color:#fff;border-radius:10px;padding:.1rem .45rem;font-size:.72rem;margin-right:.3rem"></span></button>
+        <button class="mgr-tab active" id="tab-review" onclick="switchMgrTab('review')">📋 مراجعة التقارير <span id="tab-review-count" style="background:var(--orange);color:#fff;border-radius:10px;padding:.1rem .45rem;font-size:.72rem;margin-right:.3rem"></span></button>
         <button class="mgr-tab" id="tab-fill" onclick="switchMgrTab('fill')">📝 ملء استبيان</button>
       </div>
       <!-- REVIEW TAB -->
@@ -181,7 +181,7 @@
     <div class="admin-sidebar">
       <div class="sb-label">الرئيسية</div>
       <button class="sb-btn active" onclick="showPanel('p-overview',this)"><span class="sbi">📊</span> نظرة عامة</button>
-      <button class="sb-btn" onclick="showPanel('p-results',this)"><span class="sbi">📋</span> نتائج الاستبيانات</button>
+      <button class="sb-btn" onclick="showPanel('p-results',this)"><span class="sbi">📋</span> نتائج التقارير</button>
       <button class="sb-btn" onclick="showPanel('p-analytics',this)"><span class="sbi">📈</span> التحليلات</button>
       <div class="sb-label">الإعدادات</div>
       <button class="sb-btn" onclick="showPanel('p-users',this)"><span class="sbi">👥</span> المستخدمون</button>
@@ -193,14 +193,14 @@
       <div id="p-overview" class="panel active">
         <div class="ph"><h2>نظرة عامة</h2></div>
         <div class="stats-row" id="a-stats"></div>
-        <h3 style="font-family:'Tajawal';font-size:.98rem;color:var(--green);font-weight:700;margin-bottom:.8rem">آخر الاستبيانات المعتمدة</h3>
+        <h3 style="font-family:'Tajawal';font-size:.98rem;color:var(--green);font-weight:700;margin-bottom:.8rem">آخر التقارير المعتمدة</h3>
         <div id="a-recent"></div>
       </div>
 
       <!-- RESULTS -->
       <div id="p-results" class="panel">
         <div class="ph">
-          <h2>نتائج الاستبيانات</h2>
+          <h2>نتائج التقارير</h2>
           <div class="ph-actions">
             <button class="btn-dl" onclick="downloadAllZip()">📥 تحميل الكل ZIP</button>
             <button class="btn-danger-main" onclick="downloadAndClear()">📥🗑 تحميل وإخفاء</button>

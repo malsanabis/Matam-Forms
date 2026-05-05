@@ -19,7 +19,7 @@
 <div class="app">
 <!-- ══ LOADING OVERLAY ══ -->
 <div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;">
-  <img src="https://raw.githubusercontent.com/malsanabis/Matam-Forms/refs/heads/main/https://raw.githubusercontent.com/malsanabis/Matam-Forms/refs/heads/main/logo.png" alt="logo" style="height:72px;object-fit:contain;opacity:.85;">
+  <img src="https://raw.githubusercontent.com/malsanabis/Matam-Forms/refs/heads/main/logo.png" alt="logo" style="height:72px;object-fit:contain;opacity:.85;">
   <div style="font-family:'Tajawal',sans-serif;font-size:1.1rem;font-weight:700;color:var(--green)">جاري الاتصال...</div>
   <div style="width:180px;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
     <div style="height:100%;background:var(--green);border-radius:2px;animation:loadbar 1.4s ease-in-out infinite;" id="load-bar"></div>
@@ -899,7 +899,11 @@ function printDetail(){
     <div class="section"><div class="sec-title">ملاحظات</div><div class="sec-body">${s.notes||'<em>—</em>'}</div></div>
     ${s.managerComment?`<div class="section"><div class="sec-title">تعليق المسؤول</div><div class="sec-body" style="color:#c06010">${s.managerComment}</div></div>`:''}
     <script>window.onload=()=>{window.print();}<\/script>
-
+    </body></html>\`);
+  win.document.close();
+}
+</script>
 <script src="app.js"></script>
+</div>
 </body>
 </html>

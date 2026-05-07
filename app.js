@@ -79,12 +79,15 @@ function refreshLists() {
 }
 
 // ══ INACTIVITY LOGOUT 5 MIN ══
+let _sessionStorageKey='matam_session_time';
 function resetLogoutTimer() {
   clearTimeout(_logoutTimer);
   if (!window._cu&&!window._adminLoggedIn) return;
+  sessionStorage.setItem(_sessionStorageKey,Date.now().toString());
   _logoutTimer=setTimeout(()=>{ notify('⏱ تم تسجيل خروجك تلقائياً بسبب عدم النشاط'); setTimeout(doLogout,1500); }, LOGOUT_MS);
 }
 ['click','keydown','mousemove','touchstart','scroll'].forEach(ev=>document.addEventListener(ev,resetLogoutTimer,{passive:true}));
+window.addEventListener('load',()=>{if(window._cu||window._adminLoggedIn){const lastTime=sessionStorage.getItem(_sessionStorageKey);if(lastTime){const elapsed=Date.now()-parseInt(lastTime);if(elapsed<LOGOUT_MS){resetLogoutTimer();}}}});
 
 // ══ HELPERS ══
 const $=id=>document.getElementById(id);
@@ -157,7 +160,7 @@ function doLogout(){
 // ══ 3-MONTH LIMIT ══
 function canSubmitNow(userId,committeeId){
   const d=new Date();d.setDate(d.getDate()-90);const cutoff=d.toISOString().split('T')[0];
-  return !DB.submissions.some(s=>s.userId===userId&&s.committeeId===committeeId&&s.date>=cutoff&&s.status!=='rejected'&&!s.deleted);
+  return !DB.submissions.some(s=>s.userId===userId&&s.committeeId===committeeId&&s.date>=cutoff&&s.status!=='rejected'&&!s.deleted&&s.status!=='draft');
 }
 function getNextSubmissionDate(userId,committeeId){
   const recent=DB.submissions.filter(s=>s.userId===userId&&s.committeeId===committeeId&&s.status!=='rejected'&&!s.deleted).sort((a,b)=>b.date.localeCompare(a.date))[0];
@@ -196,7 +199,7 @@ function loadRejectedForEdit(){
   fillBullets('b-achievements',sub.achievements||[]);fillBullets('b-obstacles',sub.obstacles||[]);fillBullets('b-plans',sub.plans||[]);
   $('f-notes').value=sub.notes||'';$('rejected-alert').style.display='none';
 }
-function fillBullets(wid,arr){const wrap=$(wid);wrap.innerHTML='';const items=arr.length?arr:[''];items.forEach(v=>addBulletRow(wid,v));}
+function fillBullets(wid,arr){const wrap=$(wid);wrap.innerHTML='';const items=arr.length?arr:[''];items.forEach(v=>addBulletRow(wid,v));setTimeout(()=>{const tas=wrap.querySelectorAll('textarea');tas.forEach(ta=>{ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';});},50);}
 
 // ══ MANAGER VIEW ══
 function renderManagerView(){
@@ -352,7 +355,8 @@ function renderResults(){
 function deleteToRecycle(sid){
   if(!confirm('نقل إلى سلة المحذوفات؟'))return;
   const s=DB.submissions.find(x=>x.id===sid);if(!s)return;
-  _fdb.collection('recyclebin').doc(sid).set({...s,deletedAt:Date.now(),deletedBy:window._cu?.nid||'admin'}).then(()=>{s.deleted=true;saveSubmission(s);addLog('حذف تقرير',`نقل تقرير ${s.commName} (${s.userName}) لسلة المحذوفات`);notify('✅ تم النقل لسلة المحذوفات');}).catch(()=>notify('⚠️ خطأ'));
+  if(!_fdb){notify('⚠️ خطأ: غير متصل بقاعدة البيانات');return;}
+  _fdb.collection('recyclebin').doc(sid).set({...s,deletedAt:Date.now(),deletedBy:window._cu?.nid||'admin'}).then(()=>{s.deleted=true;saveSubmission(s);addLog('حذف تقرير',`نقل تقرير ${s.commName} (${s.userName}) لسلة المحذوفات`);notify('✅ تم النقل لسلة المحذوفات');}).catch(err=>{console.error('Delete error:',err);notify('⚠️ خطأ في الحذف: '+err.message);});
 }
 function renderRecycleBin(){
   const c=$('recycle-table');if(!c)return;
@@ -401,6 +405,7 @@ function renderCheckSection(title,key,items,checks,sid){
 }
 function tickItem(sid,key,index,val){
   const s=DB.submissions.find(x=>x.id===sid);if(!s||!s.checklist)return;s.checklist[key][index]=val;saveSubmission(s);
+  addLog('تحديث قائمة التحقق',`${s.commName} - ${key} #${index} = ${val}`);
   const pct=calcProgress(s),totalItems=s.checklist.ach.length+s.checklist.obs.length+s.checklist.pln.length,doneItems=[...s.checklist.ach,...s.checklist.obs,...s.checklist.pln].filter(Boolean).length;
   const pw=document.querySelector('.progress-fill'),pl=document.querySelector('.progress-label span:last-child');
   if(pw)pw.style.width=(pct??0)+'%';if(pl)pl.textContent=`${pct??0}% (${doneItems}/${totalItems})`;

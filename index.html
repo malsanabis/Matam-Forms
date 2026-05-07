@@ -76,13 +76,13 @@
   <div class="user-main">
     <!-- HEAD VIEW -->
     <div id="head-view">
-      <h2 class="page-title" id="u-title">تقريرك</h2>
+      <h2 class="page-title" id="u-title">استبيانك</h2>
       <p class="page-sub">يمكنك ملء استبيان لجنتك</p>
       <!-- Rejected submission alert -->
       <div class="rejected-alert" id="rejected-alert" style="display:none">
         <div class="ra-icon">❌</div>
         <div>
-          <h4>تم رفض تقريرك</h4>
+          <h4>تم رفض استبيانك</h4>
           <p>راجع التعليق أدناه، عدّل الاستبيان وأعد الإرسال</p>
           <div class="ra-comment" id="rejected-comment"></div>
           <button class="btn-gold" style="margin-top:.7rem;font-size:.82rem;padding:.45rem .9rem" onclick="loadRejectedForEdit()">✏️ تعديل وإعادة الإرسال</button>
@@ -99,7 +99,7 @@
             <div class="bullets-wrap" id="b-achievements"></div>
           </div>
           <div class="field-block">
-            <div class="field-label">الصعوبات والحلول المقترحة</div>
+            <div class="field-label">المعوقات</div>
             <div class="field-desc">اضغط Enter بعد كل معوق لإضافة نقطة جديدة</div>
             <div class="bullets-wrap" id="b-obstacles"></div>
           </div>
@@ -109,7 +109,7 @@
             <div class="bullets-wrap" id="b-plans"></div>
           </div>
           <div class="field-block"><div class="field-label">ملاحظات</div><textarea class="notes-inp" id="f-notes" placeholder="اكتب ملاحظاتك هنا..." rows="4"></textarea></div>
-          <button class="btn-submit" onclick="submitForm()">✔ إرسال التقرير</button>
+          <button class="btn-submit" onclick="submitForm()">✔ إرسال الاستبيان</button>
         </div>
       </div>
     </div>
@@ -140,7 +140,7 @@
               <div class="bullets-wrap" id="mgr-b-achievements"></div>
             </div>
             <div class="field-block">
-              <div class="field-label">الصعوبات والحلول المقترحة</div>
+              <div class="field-label">المعوقات</div>
               <div class="field-desc">اضغط Enter بعد كل معوق لإضافة نقطة جديدة</div>
               <div class="bullets-wrap" id="mgr-b-obstacles"></div>
             </div>
@@ -150,7 +150,7 @@
               <div class="bullets-wrap" id="mgr-b-plans"></div>
             </div>
             <div class="field-block"><div class="field-label">ملاحظات</div><textarea class="notes-inp" id="mgr-f-notes" placeholder="اكتب ملاحظاتك هنا..." rows="4"></textarea></div>
-            <button class="btn-submit" onclick="submitManagerForm()">✔ إرسال التقرير</button>
+            <button class="btn-submit" onclick="submitManagerForm()">✔ إرسال الاستبيان</button>
           </div>
         </div>
       </div>
@@ -162,8 +162,8 @@
 <div class="success-overlay" id="success-overlay">
   <div class="success-box">
     <div class="suc-icon">✅</div>
-    <h2>رُصد تقريرك!</h2>
-    <p>تم إرسال تقريرك بنجاح<br>في انتظار مراجعة مسؤول القسم</p>
+    <h2>رُصدت إجاباتك!</h2>
+    <p>تم إرسال استبيانك بنجاح<br>في انتظار مراجعة مسؤول القسم</p>
     <button class="btn-ok" onclick="closeSuccess()">حسناً</button>
   </div>
 </div>
@@ -186,10 +186,6 @@
       <div class="sb-label">الإعدادات</div>
       <button class="sb-btn" onclick="showPanel('p-users',this)"><span class="sbi">👥</span> المستخدمون</button>
       <button class="sb-btn" onclick="showPanel('p-structure',this)"><span class="sbi">🏛</span> الهيكل التنظيمي</button>
-      <button class="sb-btn" onclick="showPanel('p-admins',this)"><span class="sbi">🛡</span> المسؤولون</button>
-      <button class="sb-btn" onclick="showPanel('p-logs',this)"><span class="sbi">📋</span> سجل الإجراءات</button>
-      <button class="sb-btn" onclick="showPanel('p-recycle',this)"><span class="sbi">🗑</span> سلة المحذوفات</button>
-      <button class="sb-btn" onclick="showPanel('p-annual',this)"><span class="sbi">📅</span> التصدير السنوي</button>
     </div>
     <div class="admin-main">
 
@@ -275,51 +271,6 @@
         </div>
       </div>
 
-
-      <!-- ADMINS -->
-      <div id="p-admins" class="panel">
-        <div class="ph"><h2>إدارة المسؤولين</h2></div>
-        <div id="admins-table"></div>
-        <div class="form-card">
-          <h4>➕ إضافة مسؤول جديد</h4>
-          <div class="frow">
-            <div class="fgroup"><label>الاسم الكامل</label><input type="text" id="na-name" class="inp" placeholder="مثال: أحمد السنابسي"></div>
-            <div class="fgroup">
-              <label>الرقم الوطني (CPR)</label>
-              <input type="text" id="na-cpr" class="inp" placeholder="مثال: 880101001" maxlength="9" inputmode="numeric" oninput="handleNidInput(this)">
-              <div class="arabic-warn" id="na-cpr-warn">⚠️ الأرقام العربية غير مقبولة</div>
-            </div>
-          </div>
-          <div class="frow">
-            <div class="fgroup"><label>كلمة المرور</label><input type="password" id="na-pass" class="inp" placeholder="كلمة مرور قوية"></div>
-            <div class="fgroup"></div>
-          </div>
-          <button class="btn-gold" onclick="addAdmin()">حفظ المسؤول</button>
-        </div>
-      </div>
-
-      <!-- LOGS -->
-      <div id="p-logs" class="panel">
-        <div class="ph"><h2>سجل الإجراءات</h2></div>
-        <div class="r-controls" style="margin-bottom:1rem">
-          <input type="text" id="logs-search" class="inp" placeholder="بحث في السجلات..." oninput="renderLogs()">
-        </div>
-        <div id="logs-table"></div>
-      </div>
-
-      <!-- RECYCLE BIN -->
-      <div id="p-recycle" class="panel">
-        <div class="ph"><h2>سلة المحذوفات</h2></div>
-        <p style="font-size:.82rem;color:var(--muted);margin-bottom:1.2rem">التقارير المحذوفة تُحفظ هنا لمدة 6 أشهر ثم تُحذف تلقائياً. يمكنك استرداد أي تقرير.</p>
-        <div id="recycle-table"></div>
-      </div>
-
-      <!-- ANNUAL EXPORT -->
-      <div id="p-annual" class="panel">
-        <div class="ph"><h2>التصدير السنوي</h2></div>
-        <p style="font-size:.82rem;color:var(--muted);margin-bottom:1.2rem">متابعة تقارير كل لجنة لكل ربع سنوي. المتوقع: 4 تقارير سنوياً لكل لجنة (Q1–Q4).</p>
-        <div id="annual-content"></div>
-      </div>
     </div>
   </div>
 </div>

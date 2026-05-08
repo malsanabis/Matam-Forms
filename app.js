@@ -201,14 +201,14 @@ function canSubmitNow(userId,committeeId){
   const d=new Date();d.setDate(d.getDate()-90);const cutoff=d.toISOString().split('T')[0];
   return !DB.submissions.some(s=>{
     if(s.userId!==userId||s.committeeId!==committeeId||s.deleted)return false;
-    if(s.status==='rejected')return false;
+    if(s.status==='rejected'||s.status==='draft')return false; // draft = rejected being edited
     // approved: use approvedDate; pending: use submission date
     const refDate=s.status==='approved'&&s.approvedDate?s.approvedDate:s.date;
     return refDate>=cutoff;
   });
 }
 function getNextSubmissionDate(userId,committeeId){
-  const recent=DB.submissions.filter(s=>s.userId===userId&&s.committeeId===committeeId&&s.status!=='rejected'&&!s.deleted).sort((a,b)=>{
+  const recent=DB.submissions.filter(s=>s.userId===userId&&s.committeeId===committeeId&&s.status!=='rejected'&&s.status!=='draft'&&!s.deleted).sort((a,b)=>{
     const da=a.status==='approved'&&a.approvedDate?a.approvedDate:a.date;
     const db2=b.status==='approved'&&b.approvedDate?b.approvedDate:b.date;
     return db2.localeCompare(da);
@@ -223,8 +223,14 @@ function renderHeadView(){
   const user=window._cu; const comm=findCommittee(user.committeeId); if(!comm)return;
   $('u-title').textContent='تقريرك';
   const rejected=DB.submissions.find(s=>s.userId===user.nid&&s.status==='rejected'&&!s.deleted);
-  if(rejected){$('rejected-alert').style.display='flex';$('rejected-comment').textContent=rejected.managerComment||'لم يُذكر سبب';window._rejectedSub=rejected;}
-  else{$('rejected-alert').style.display='none';window._rejectedSub=null;}
+  // recover a draft left behind by a previous interrupted edit session
+  const draft=DB.submissions.find(s=>s.userId===user.nid&&s.status==='draft'&&!s.deleted);
+  if(rejected||(draft&&!rejected)){
+    const sub=rejected||draft;
+    $('rejected-alert').style.display='flex';
+    $('rejected-comment').textContent=sub.managerComment||'لم يُذكر سبب';
+    window._rejectedSub=sub;
+  } else {$('rejected-alert').style.display='none';window._rejectedSub=null;}
   const existing=DB.submissions.find(s=>s.userId===user.nid&&(s.status==='pending'||s.status==='approved')&&!s.deleted);
   const grid=$('comm-grid');
   if(existing){
@@ -310,14 +316,20 @@ function getBullets(wid){return[...$(wid).querySelectorAll('.bullet-inp')].map(t
 // ══ SUBMIT ══
 function submitForm(){
   const cid=window._sc;if(!cid)return;const user=window._cu;
+  // editing a previously rejected submission — bypass the 3-month gate entirely
+  if(window._editingSubId){
+    const ex=DB.submissions.find(s=>s.id===window._editingSubId);
+    if(ex){
+      const achievements=getBullets('b-achievements'),obstacles=getBullets('b-obstacles'),plans=getBullets('b-plans'),notes=$('f-notes').value.trim();
+      if(!achievements.length){notify('⚠️ الإنجازات إجبارية');return;}if(!plans.length){notify('⚠️ المخططات القادمة إجبارية');return;}
+      ex.achievements=achievements;ex.obstacles=obstacles;ex.plans=plans;ex.notes=notes;ex.status='pending';ex.managerComment='';ex.date=new Date().toISOString().split('T')[0];ex.checklist=null;
+      saveSubmission(ex);window._editingSubId=null;$('success-overlay').classList.add('show');return;
+    }
+  }
   if(!canSubmitNow(user.nid,cid)){notify(`⚠️ التقرير القادم: ${getNextSubmissionDate(user.nid,cid)}`);return;}
   const achievements=getBullets('b-achievements'),obstacles=getBullets('b-obstacles'),plans=getBullets('b-plans'),notes=$('f-notes').value.trim();
   if(!achievements.length){notify('⚠️ الإنجازات إجبارية');return;}if(!plans.length){notify('⚠️ المخططات القادمة إجبارية');return;}
   const comm=findCommittee(cid),dept=getCommDept(cid),sec=getCommSection(cid);
-  if(window._editingSubId){
-    const ex=DB.submissions.find(s=>s.id===window._editingSubId);
-    if(ex){ex.achievements=achievements;ex.obstacles=obstacles;ex.plans=plans;ex.notes=notes;ex.status='pending';ex.managerComment='';ex.date=new Date().toISOString().split('T')[0];ex.checklist=null;saveSubmission(ex);window._editingSubId=null;$('success-overlay').classList.add('show');return;}
-  }
   const quarter='Q'+Math.ceil((new Date().getMonth()+1)/3);
   saveSubmission({id:'sub-'+Date.now(),userId:user.nid,userName:user.name,sectionId:sec?.id,sectionName:sec?.name,deptId:dept?.id,deptName:dept?.name,committeeId:cid,commName:comm?.name,date:new Date().toISOString().split('T')[0],year:new Date().getFullYear(),quarter,achievements,obstacles,plans,notes,status:'pending',managerComment:'',archived:false,checklist:null,deleted:false});
   $('success-overlay').classList.add('show');

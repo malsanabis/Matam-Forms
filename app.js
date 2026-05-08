@@ -565,7 +565,7 @@ function deleteUser(nid){
 // ══ EMAILJS ══
 function _getEjs(){ return (typeof ejsConfig!=='undefined'&&ejsConfig.serviceId)?ejsConfig:null; }
 async function testEmailJS(){
-  const cfg=_getEjs();if(!cfg){notify('⚠️ emailjs-config.js غير محمل — تأكد من الـ GitHub secrets');return;}
+  const cfg=_getEjs();if(!cfg){notify('⚠️ emailjs-config.js غير محمل — تأكد من الـ secrets');return;}
   const adminEmails=Object.entries(DB.admins).filter(([,a])=>a.email);
   if(!adminEmails.length){notify('⚠️ لا يوجد مسؤول بإيميل مسجل');return;}
   notify('⏳ جاري الإرسال...');
@@ -596,7 +596,7 @@ function renderAdminsTable(){
   if(!admins.length){c.innerHTML='<div class="empty-s"><div class="ei">🛡</div><p>لا يوجد مسؤولون</p></div>';return;}
   c.innerHTML=`<div class="tbl-wrap" style="margin-bottom:1.1rem"><table><thead><tr><th>الرقم الوطني (CPR)</th><th>الاسم</th><th>البريد الإلكتروني</th><th></th></tr></thead><tbody>${admins.map(([cpr,a])=>`<tr><td><span class="id-tag">${cpr}</span></td><td>${a.name}</td><td style="color:var(--muted);font-size:.8rem">${a.email||'<span style="color:var(--muted2)">—</span>'}</td><td><button class="btn-sm danger" onclick="deleteAdmin('${cpr}')" ${admins.length<=1?'disabled':''}>${admins.length<=1?'المسؤول الوحيد':'حذف'}</button></td></tr>`).join('')}</tbody></table></div>`;
   const ejsOk=typeof ejsConfig!=='undefined'&&ejsConfig.serviceId;
-  const st=$('ejs-status');if(st)st.innerHTML=ejsOk?'<span style="color:var(--green)">✅ EmailJS محمّل وجاهز</span>':'<span style="color:var(--orange)">⚠️ emailjs-config.js غير موجود — أضف الـ GitHub secrets وادفع commit</span>';
+  const st=$('ejs-status');if(st)st.innerHTML=ejsOk?'<span style="color:var(--green)">✅ EmailJS محمّل وجاهز</span>':'<span style="color:var(--orange)">⚠️ emailjs-config.js غير موجود — أضف الـ secrets وادفع commit</span>';
 }
 function addAdmin(){
   const name=$('na-name').value.trim(),cpr=$('na-cpr').value.trim(),pass=$('na-pass').value.trim(),email=$('na-email').value.trim();

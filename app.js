@@ -18,6 +18,13 @@ let DB = {
 let _fdb=null, _fbReady=false, _detailSub=null, _adminLogs=[], _recyclebin=[], _logoutTimer=null;
 const LOGOUT_MS=5*60*1000, RECYCLE_DAYS=180;
 
+// ══ EMAILJS INIT (from generated emailjs-config.js) ══
+window.addEventListener('load', ()=>{
+  if(typeof ejsConfig!=='undefined' && ejsConfig.publicKey && typeof emailjs!=='undefined'){
+    emailjs.init(ejsConfig.publicKey);
+  }
+});
+
 // ══ FIREBASE ══
 window.addEventListener('load', initFirebase);
 async function initFirebase() {
@@ -27,7 +34,7 @@ async function initFirebase() {
     _fdb.collection('config').doc('main').onSnapshot(doc => {
       if (doc.exists) { const d=doc.data(); if(d.sections?.length) DB.sections=d.sections; if(d.users) DB.users=d.users; if(d.admins) DB.admins=d.admins; }
       else saveConfig();
-      if (!_fbReady) { _fbReady=true; hideLoader(); }
+      if (!_fbReady) { _fbReady=true; hideLoader(); restoreSession(); }
       refreshLists();
     }, err => { console.error(err); showFbError(); });
     _fdb.collection('submissions').onSnapshot(snap => {
@@ -58,6 +65,26 @@ function addLog(action, details) {
 }
 function hideLoader() { const e=$('loading-overlay'); if(e) e.style.display='none'; }
 function showFbError() { hideLoader(); const e=$('fb-error'); if(e) e.style.display='flex'; }
+function restoreSession(){
+  try{
+    const saved=sessionStorage.getItem('_cu');
+    if(!saved)return;
+    const cu=JSON.parse(saved);
+    if(!cu||!cu.nid)return;
+    window._cu=cu;
+    window._adminLoggedIn=cu.role==='admin';
+    resetLogoutTimer();
+    if(cu.role==='admin'){
+      showScreen('screen-admin');renderOverview();
+    } else {
+      $('u-badge').textContent=cu.name;
+      const rb=$('u-role-badge');rb.textContent=cu.role==='manager'?'مسؤول قسم':'رئيس لجنة';rb.style.display='block';
+      showScreen('screen-user');
+      if(cu.role==='manager'){$('head-view').style.display='none';$('manager-view').style.display='block';renderManagerView();}
+      else{$('head-view').style.display='block';$('manager-view').style.display='none';renderHeadView();}
+    }
+  }catch(e){sessionStorage.removeItem('_cu');}
+}
 
 function refreshLists() {
   const screen=document.querySelector('.screen.active')?.id;
@@ -131,12 +158,14 @@ function doLogin(){
     if(!pass){err.textContent='الرجاء إدخال كلمة المرور';err.style.display='block';return;}
     if(pass!==ar.password){err.textContent='كلمة المرور خاطئة';err.style.display='block';return;}
     window._cu={nid,name:ar.name,role:'admin'}; window._adminLoggedIn=true;
+    sessionStorage.setItem('_cu',JSON.stringify(window._cu));
     resetLogoutTimer(); addLog('تسجيل دخول',`دخل المسؤول ${ar.name}`);
     showScreen('screen-admin'); renderOverview(); return;
   }
   const user=DB.users[nid];
   if(!user){err.textContent='عذراً، أنت غير مسجل في النظام';err.style.display='block';return;}
   window._cu={nid,...user}; window._adminLoggedIn=false; resetLogoutTimer();
+  sessionStorage.setItem('_cu',JSON.stringify(window._cu));
   $('u-badge').textContent=user.name;
   const rb=$('u-role-badge'); rb.textContent=user.role==='manager'?'مسؤول قسم':'رئيس لجنة'; rb.style.display='block';
   showScreen('screen-user');
@@ -148,6 +177,7 @@ function doLogout(){
   clearTimeout(_logoutTimer);
   if(window._cu?.role==='admin') addLog('تسجيل خروج',`خرج المسؤول ${window._cu.name}`);
   window._cu=null;window._sc=null;window._editingSubId=null;window._adminLoggedIn=false;
+  sessionStorage.removeItem('_cu');
   $('nid').value='';$('a-pass').value='';$('admin-extra').style.display='none';
   const fs=$('form-section');if(fs)fs.style.display='none';
   const ra=$('rejected-alert');if(ra)ra.style.display='none';
@@ -157,11 +187,23 @@ function doLogout(){
 // ══ 3-MONTH LIMIT ══
 function canSubmitNow(userId,committeeId){
   const d=new Date();d.setDate(d.getDate()-90);const cutoff=d.toISOString().split('T')[0];
-  return !DB.submissions.some(s=>s.userId===userId&&s.committeeId===committeeId&&s.date>=cutoff&&s.status!=='rejected'&&!s.deleted);
+  return !DB.submissions.some(s=>{
+    if(s.userId!==userId||s.committeeId!==committeeId||s.deleted)return false;
+    if(s.status==='rejected')return false;
+    // approved: use approvedDate; pending: use submission date
+    const refDate=s.status==='approved'&&s.approvedDate?s.approvedDate:s.date;
+    return refDate>=cutoff;
+  });
 }
 function getNextSubmissionDate(userId,committeeId){
-  const recent=DB.submissions.filter(s=>s.userId===userId&&s.committeeId===committeeId&&s.status!=='rejected'&&!s.deleted).sort((a,b)=>b.date.localeCompare(a.date))[0];
-  if(!recent)return null; const d=new Date(recent.date); d.setDate(d.getDate()+90); return d.toLocaleDateString('ar-BH');
+  const recent=DB.submissions.filter(s=>s.userId===userId&&s.committeeId===committeeId&&s.status!=='rejected'&&!s.deleted).sort((a,b)=>{
+    const da=a.status==='approved'&&a.approvedDate?a.approvedDate:a.date;
+    const db2=b.status==='approved'&&b.approvedDate?b.approvedDate:b.date;
+    return db2.localeCompare(da);
+  })[0];
+  if(!recent)return null;
+  const refDate=recent.status==='approved'&&recent.approvedDate?recent.approvedDate:recent.date;
+  const d=new Date(refDate); d.setDate(d.getDate()+90); return d.toLocaleDateString('ar-BH');
 }
 
 // ══ HEAD VIEW ══
@@ -223,7 +265,7 @@ function renderManagerView(){
   </div>`).join('');
 }
 
-function approveSubmission(sid){const s=DB.submissions.find(x=>x.id===sid);if(!s)return;s.status='approved';saveSubmission(s);notify('✅ تم قبول التقرير وإرساله للإدارة');}
+function approveSubmission(sid){const s=DB.submissions.find(x=>x.id===sid);if(!s)return;s.status='approved';s.approvedDate=new Date().toISOString().split('T')[0];saveSubmission(s);sendApprovalEmails(s);notify('✅ تم قبول التقرير وإرساله للإدارة');}
 function openRejectFromManager(sid){$('reject-sub-id').value=sid;$('reject-comment').value='';$('reject-modal').classList.add('show');}
 function confirmReject(){
   const sid=$('reject-sub-id').value; const comment=$('reject-comment').value.trim();
@@ -397,10 +439,16 @@ function showDetail(sid){
 }
 function renderCheckSection(title,key,items,checks,sid){
   if(!items||!items.length)return`<div class="ans-block"><div class="ans-q">${title}</div><div class="ans-v ev">—</div></div>`;
+  // obstacles section (obs) — plain list, no checkboxes
+  if(key==='obs'){
+    return`<div class="ans-block"><div class="ans-q">${title}</div><div style="background:var(--card2);border:1px solid var(--border);border-radius:3px;padding:.5rem .7rem">${items.map(item=>`<div style="padding:.25rem 0;font-size:.88rem">• ${item}</div>`).join('')}</div></div>`;
+  }
   return`<div class="ans-block"><div class="ans-q">${title}</div><div style="background:var(--card2);border:1px solid var(--border);border-radius:3px;padding:.5rem .7rem">${items.map((item,i)=>`<div class="checklist-item"><input type="checkbox" id="chk-${key}-${i}" ${checks[i]?'checked':''} onchange="tickItem('${sid}','${key}',${i},this.checked)"><label for="chk-${key}-${i}" class="${checks[i]?'done':''}">${item}</label></div>`).join('')}</div></div>`;
 }
 function tickItem(sid,key,index,val){
   const s=DB.submissions.find(x=>x.id===sid);if(!s||!s.checklist)return;s.checklist[key][index]=val;saveSubmission(s);
+  const keyLabel={'ach':'الإنجازات','pln':'المخططات'};
+  addLog('تحديث قائمة التحقق',`${val?'✅':'☐'} ${keyLabel[key]||key} #${index+1} — ${s.commName} (${s.userName})`);
   const pct=calcProgress(s),totalItems=s.checklist.ach.length+s.checklist.obs.length+s.checklist.pln.length,doneItems=[...s.checklist.ach,...s.checklist.obs,...s.checklist.pln].filter(Boolean).length;
   const pw=document.querySelector('.progress-fill'),pl=document.querySelector('.progress-label span:last-child');
   if(pw)pw.style.width=(pct??0)+'%';if(pl)pl.textContent=`${pct??0}% (${doneItems}/${totalItems})`;
@@ -514,19 +562,50 @@ function deleteUser(nid){
   delete DB.users[nid];saveDB();addLog('حذف مستخدم',`${name} (${nid})`);renderUsersTable();notify('تم الحذف');
 }
 
+// ══ EMAILJS ══
+function _getEjs(){ return (typeof ejsConfig!=='undefined'&&ejsConfig.serviceId)?ejsConfig:null; }
+async function testEmailJS(){
+  const cfg=_getEjs();if(!cfg){notify('⚠️ emailjs-config.js غير محمل — تأكد من الـ GitHub secrets');return;}
+  const adminEmails=Object.entries(DB.admins).filter(([,a])=>a.email);
+  if(!adminEmails.length){notify('⚠️ لا يوجد مسؤول بإيميل مسجل');return;}
+  notify('⏳ جاري الإرسال...');
+  try{
+    await emailjs.send(cfg.serviceId,cfg.templateId,{
+      to_email:adminEmails[0][1].email,to_name:adminEmails[0][1].name,
+      reporter_name:'اختبار النظام',committee_name:'لجنة الاختبار',section_name:'اختبار',
+      report_date:new Date().toLocaleDateString('ar-BH'),message:'هذه رسالة اختبار من نظام مأتم السنابس'
+    });
+    notify('✅ تم إرسال رسالة اختبار');$('ejs-status').innerHTML='<span style="color:var(--green)">✅ الاختبار نجح</span>';
+  }catch(e){notify('❌ فشل الإرسال: '+(e.text||e));$('ejs-status').innerHTML=`<span style="color:var(--red)">❌ ${e.text||'خطأ'}</span>`;}
+}
+async function sendApprovalEmails(sub){
+  const cfg=_getEjs();if(!cfg||typeof emailjs==='undefined')return;
+  const adminEmails=Object.entries(DB.admins).filter(([,a])=>a.email);
+  if(!adminEmails.length)return;
+  const params={reporter_name:sub.userName,committee_name:sub.commName,section_name:sub.sectionName||'',report_date:sub.date,message:`تم اعتماد تقرير ${sub.commName} المقدم من ${sub.userName} بتاريخ ${sub.date}`};
+  for(const [,admin] of adminEmails){
+    try{ await emailjs.send(cfg.serviceId,cfg.templateId,{...params,to_email:admin.email,to_name:admin.name}); }
+    catch(e){ console.error('EmailJS error:',e); }
+  }
+  addLog('إرسال إشعار بريد',`اعتماد: ${sub.commName} (${sub.userName}) — ${adminEmails.length} مسؤول`);
+}
+
 // ══ ADMIN USERS ══
 function renderAdminsTable(){
   const c=$('admins-table');if(!c)return;const admins=Object.entries(DB.admins);
   if(!admins.length){c.innerHTML='<div class="empty-s"><div class="ei">🛡</div><p>لا يوجد مسؤولون</p></div>';return;}
-  c.innerHTML=`<div class="tbl-wrap" style="margin-bottom:1.1rem"><table><thead><tr><th>الرقم الوطني (CPR)</th><th>الاسم</th><th></th></tr></thead><tbody>${admins.map(([cpr,a])=>`<tr><td><span class="id-tag">${cpr}</span></td><td>${a.name}</td><td><button class="btn-sm danger" onclick="deleteAdmin('${cpr}')" ${admins.length<=1?'disabled':''}>${admins.length<=1?'المسؤول الوحيد':'حذف'}</button></td></tr>`).join('')}</tbody></table></div>`;
+  c.innerHTML=`<div class="tbl-wrap" style="margin-bottom:1.1rem"><table><thead><tr><th>الرقم الوطني (CPR)</th><th>الاسم</th><th>البريد الإلكتروني</th><th></th></tr></thead><tbody>${admins.map(([cpr,a])=>`<tr><td><span class="id-tag">${cpr}</span></td><td>${a.name}</td><td style="color:var(--muted);font-size:.8rem">${a.email||'<span style="color:var(--muted2)">—</span>'}</td><td><button class="btn-sm danger" onclick="deleteAdmin('${cpr}')" ${admins.length<=1?'disabled':''}>${admins.length<=1?'المسؤول الوحيد':'حذف'}</button></td></tr>`).join('')}</tbody></table></div>`;
+  const ejsOk=typeof ejsConfig!=='undefined'&&ejsConfig.serviceId;
+  const st=$('ejs-status');if(st)st.innerHTML=ejsOk?'<span style="color:var(--green)">✅ EmailJS محمّل وجاهز</span>':'<span style="color:var(--orange)">⚠️ emailjs-config.js غير موجود — أضف الـ GitHub secrets وادفع commit</span>';
 }
 function addAdmin(){
-  const name=$('na-name').value.trim(),cpr=$('na-cpr').value.trim(),pass=$('na-pass').value.trim();
+  const name=$('na-name').value.trim(),cpr=$('na-cpr').value.trim(),pass=$('na-pass').value.trim(),email=$('na-email').value.trim();
   if(!name){notify('⚠️ أدخل الاسم');return;}if(!cpr){notify('⚠️ أدخل الرقم الوطني');return;}if(!pass){notify('⚠️ أدخل كلمة المرور');return;}
   if(/[\u0660-\u0669\u06F0-\u06F9]/.test(cpr)){notify('⚠️ الأرقام العربية غير مقبولة');return;}
   if(DB.admins[cpr]){notify('⚠️ CPR مسجل مسبقاً');return;}if(DB.users[cpr]){notify('⚠️ مسجل كمستخدم عادي');return;}
-  DB.admins[cpr]={name,password:pass};saveDB();addLog('إضافة مسؤول',`${name} (${cpr})`);
-  $('na-name').value='';$('na-cpr').value='';$('na-pass').value='';renderAdminsTable();notify('✅ تم إضافة المسؤول');
+  const adminObj={name,password:pass};if(email)adminObj.email=email;
+  DB.admins[cpr]=adminObj;saveDB();addLog('إضافة مسؤول',`${name} (${cpr})${email?' — '+email:''}`);
+  $('na-name').value='';$('na-cpr').value='';$('na-pass').value='';$('na-email').value='';renderAdminsTable();notify('✅ تم إضافة المسؤول');
 }
 function deleteAdmin(cpr){
   if(Object.keys(DB.admins).length<=1){notify('⚠️ لا يمكن حذف المسؤول الوحيد');return;}

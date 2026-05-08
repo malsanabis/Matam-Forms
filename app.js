@@ -45,14 +45,22 @@ async function initFirebase() {
     _fdb.collection('logs').orderBy('ts','desc').limit(300).onSnapshot(snap => {
       _adminLogs=snap.docs.map(d=>({...d.data(),id:d.id}));
       if (document.querySelector('.panel.active')?.id==='p-logs') renderLogs();
-    }, err => console.error('Logs:',err));
+    }, err => {
+      if(err.code==='permission-denied'){
+        console.error('Logs: قواعد Firebase لم تُنشر — شغّل: firebase deploy --only firestore:rules');
+        const c=$('logs-table');if(c)c.innerHTML='<div class="empty-s" style="color:var(--orange)"><div class="ei">⚠️</div><p>خطأ في الصلاحيات — قواعد Firebase لم تُنشر بعد<br><small style="color:var(--muted)">شغّل: <code>firebase deploy --only firestore:rules</code></small></p></div>';
+      } else console.error('Logs:',err);
+    });
     _fdb.collection('recyclebin').onSnapshot(snap => {
       const cutoff=Date.now()-RECYCLE_DAYS*86400000;
       _recyclebin=snap.docs.map(d=>({...d.data(),id:d.id}));
       _recyclebin.filter(r=>r.deletedAt<cutoff).forEach(r=>_fdb.collection('recyclebin').doc(r.id).delete());
       _recyclebin=_recyclebin.filter(r=>r.deletedAt>=cutoff);
       if (document.querySelector('.panel.active')?.id==='p-recycle') renderRecycleBin();
-    }, err => console.error('Recycle:',err));
+    }, err => {
+      if(err.code==='permission-denied') console.error('Recycle: قواعد Firebase لم تُنشر — شغّل: firebase deploy --only firestore:rules');
+      else console.error('Recycle:',err);
+    });
   } catch(e) { console.error('Firebase:',e); showFbError(); }
 }
 
@@ -61,7 +69,11 @@ function saveDB() { saveConfig(); }
 function saveSubmission(sub) { if(!_fdb){notify('⚠️ غير متصل');return;} _fdb.collection('submissions').doc(sub.id).set(sub).catch(()=>notify('⚠️ خطأ في الحفظ')); }
 function addLog(action, details) {
   if(!_fdb||!window._cu) return;
-  _fdb.collection('logs').add({ adminCpr:window._cu.nid, adminName:window._cu.name, action, details, ts:Date.now(), tsStr:new Date().toLocaleString('ar-BH') });
+  _fdb.collection('logs').add({ adminCpr:window._cu.nid, adminName:window._cu.name, action, details, ts:Date.now(), tsStr:new Date().toLocaleString('ar-BH') })
+    .catch(err => {
+      if(err.code==='permission-denied') console.error('⚠️ سجل الإجراءات: قواعد Firebase لم تُنشر بعد — شغّل: firebase deploy --only firestore:rules', err);
+      else console.error('addLog error:', err);
+    });
 }
 function hideLoader() { const e=$('loading-overlay'); if(e) e.style.display='none'; }
 function showFbError() { hideLoader(); const e=$('fb-error'); if(e) e.style.display='flex'; }
@@ -418,12 +430,13 @@ function permanentDelete(sid){
 }
 
 // ══ DETAIL MODAL ══
-function calcProgress(s){if(!s.checklist)return null;const all=[...(s.checklist.ach||[]),...(s.checklist.obs||[]),...(s.checklist.pln||[])];if(!all.length)return null;return Math.round(all.filter(Boolean).length/all.length*100);}
+// obs is always shown as plain list (no checkboxes), so exclude it from progress calc
+function calcProgress(s){if(!s.checklist)return null;const all=[...(s.checklist.ach||[]),...(s.checklist.pln||[])];if(!all.length)return null;return Math.round(all.filter(Boolean).length/all.length*100);}
 function showDetail(sid){
   const s=DB.submissions.find(x=>x.id===sid);if(!s)return;_detailSub=s;
   $('m-title').textContent=`${s.userName} — ${s.commName}`;
   if(!s.checklist){s.checklist={ach:(s.achievements||[]).map(()=>false),obs:(s.obstacles||[]).map(()=>false),pln:(s.plans||[]).map(()=>false)};}
-  const pct=calcProgress(s),totalItems=s.checklist.ach.length+s.checklist.obs.length+s.checklist.pln.length,doneItems=[...s.checklist.ach,...s.checklist.obs,...s.checklist.pln].filter(Boolean).length;
+  const pct=calcProgress(s),totalItems=s.checklist.ach.length+s.checklist.pln.length,doneItems=[...s.checklist.ach,...s.checklist.pln].filter(Boolean).length;
   $('m-body').innerHTML=`
     <div style="margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--bg2);display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
       <span class="id-tag">${s.userId}</span><span style="color:var(--muted);font-size:.8rem">${s.date}${s.quarter?' · '+s.quarter:''}</span>
@@ -449,7 +462,7 @@ function tickItem(sid,key,index,val){
   const s=DB.submissions.find(x=>x.id===sid);if(!s||!s.checklist)return;s.checklist[key][index]=val;saveSubmission(s);
   const keyLabel={'ach':'الإنجازات','pln':'المخططات'};
   addLog('تحديث قائمة التحقق',`${val?'✅':'☐'} ${keyLabel[key]||key} #${index+1} — ${s.commName} (${s.userName})`);
-  const pct=calcProgress(s),totalItems=s.checklist.ach.length+s.checklist.obs.length+s.checklist.pln.length,doneItems=[...s.checklist.ach,...s.checklist.obs,...s.checklist.pln].filter(Boolean).length;
+  const pct=calcProgress(s),totalItems=s.checklist.ach.length+s.checklist.pln.length,doneItems=[...s.checklist.ach,...s.checklist.pln].filter(Boolean).length;
   const pw=document.querySelector('.progress-fill'),pl=document.querySelector('.progress-label span:last-child');
   if(pw)pw.style.width=(pct??0)+'%';if(pl)pl.textContent=`${pct??0}% (${doneItems}/${totalItems})`;
   document.querySelectorAll('.checklist-item label').forEach(lbl=>{const chk=lbl.previousElementSibling;if(chk)lbl.className=chk.checked?'done':'';});

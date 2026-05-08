@@ -12,5 +12,20 @@ service cloud.firestore {
     match /submissions/{subId} {
       allow read, write: if true;
     }
+
+    // Recycle bin — anyone can read/write
+    match /recyclebin/{docId} {
+      allow read, write: if true;
+    }
+
+    // Admin action logs — anyone can read/write
+    match /logs/{logId} {
+      allow read, write: if true;
+    }
+
+    // EmailJS and other secrets — anyone can read/write (app-level auth)
+    match /secrets/{docId} {
+      allow read, write: if true;
+    }
   }
 }

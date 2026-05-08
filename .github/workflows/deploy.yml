@@ -26,7 +26,15 @@ jobs:
           };
           EOF
 
-      - name: Deploy
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy Firestore Rules
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/sa.json
+          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only firestore:rules --project ${{ secrets.FB_PROJECT_ID }}
+
+      - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: .

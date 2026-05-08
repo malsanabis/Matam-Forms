@@ -292,9 +292,22 @@
           </div>
           <div class="frow">
             <div class="fgroup"><label>كلمة المرور</label><input type="password" id="na-pass" class="inp" placeholder="كلمة مرور قوية"></div>
-            <div class="fgroup"></div>
+            <div class="fgroup"><label>البريد الإلكتروني <span style="color:var(--muted);font-weight:400">(اختياري)</span></label><input type="email" id="na-email" class="inp" placeholder="example@email.com"></div>
           </div>
           <button class="btn-gold" onclick="addAdmin()">حفظ المسؤول</button>
+        </div>
+
+        <!-- EmailJS Status -->
+        <div class="form-card" style="margin-top:1.2rem;border:1.5px dashed var(--orange)">
+          <h4>📧 إشعارات البريد الإلكتروني (EmailJS)</h4>
+          <p style="font-size:.79rem;color:var(--muted);margin-bottom:.9rem">
+            الإعدادات تُحقن تلقائياً عبر GitHub Actions secrets عند كل deploy.<br>
+            أضف إيميل لكل مسؤول أعلاه حتى يستلم إشعار عند اعتماد أي تقرير.
+          </p>
+          <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+            <div id="ejs-status" style="font-size:.82rem"></div>
+            <button class="btn-sm" onclick="testEmailJS()">🧪 إرسال إيميل تجريبي</button>
+          </div>
         </div>
       </div>
 
@@ -410,6 +423,8 @@
 
 <div class="notif" id="notif"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="emailjs-config.js"></script>
 <script src="app.js"></script>
 </div>
 </body>

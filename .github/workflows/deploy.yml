@@ -31,6 +31,7 @@ jobs:
 
       - name: Deploy Firestore Rules
         run: |
+          echo '{ "firestore": { "rules": "firestore.rules" } }' > firebase.json
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/sa.json
           GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json firebase deploy --only firestore:rules --project ${{ secrets.FB_PROJECT_ID }}
 
